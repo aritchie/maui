@@ -31,6 +31,9 @@ namespace Microsoft.Maui.Controls.Platform
 		VisualElement? _element;
 		TappedEventHandler? _tappedEventHandler;
 		DoubleTappedEventHandler? _doubleTappedEventHandler;
+
+		// Text input controls and selectable text mark Tapped/DoubleTapped as handled, so listen for handled events too.
+		bool ReceivesHandledTapEvents => _control is TextBox || (_control is TextBlock && Element is Label { IsTextSelectable: true });
 		LongPressGestureHandler? _longPressGestureHandler;
 
 		SubscriptionFlags _subscriptionFlags = SubscriptionFlags.None;
@@ -360,7 +363,7 @@ namespace Microsoft.Maui.Controls.Platform
 				{
 					_subscriptionFlags &= ~SubscriptionFlags.ContainerTapAndRightTabEventSubscribed;
 
-					if (_control is TextBox)
+					if (_tappedEventHandler is not null)
 					{
 						_container.RemoveHandler(FrameworkElement.TappedEvent, _tappedEventHandler);
 						_tappedEventHandler = null;
@@ -377,7 +380,7 @@ namespace Microsoft.Maui.Controls.Platform
 				{
 					_subscriptionFlags &= ~SubscriptionFlags.ContainerDoubleTapEventSubscribed;
 
-					if (_control is TextBox)
+					if (_doubleTappedEventHandler is not null)
 					{
 						_container.RemoveHandler(FrameworkElement.DoubleTappedEvent, _doubleTappedEventHandler);
 						_doubleTappedEventHandler = null;
@@ -1127,7 +1130,7 @@ namespace Microsoft.Maui.Controls.Platform
 			{
 				_subscriptionFlags |= SubscriptionFlags.ContainerTapAndRightTabEventSubscribed;
 
-				if (_control is TextBox)
+				if (ReceivesHandledTapEvents)
 				{
 					_tappedEventHandler = new TappedEventHandler(OnTap);
 					_container.AddHandler(FrameworkElement.TappedEvent, _tappedEventHandler, true);
@@ -1158,7 +1161,7 @@ namespace Microsoft.Maui.Controls.Platform
 			{
 				_subscriptionFlags |= SubscriptionFlags.ContainerDoubleTapEventSubscribed;
 
-				if (_control is TextBox)
+				if (ReceivesHandledTapEvents)
 				{
 					_doubleTappedEventHandler = new DoubleTappedEventHandler(OnTap);
 					_container.AddHandler(FrameworkElement.DoubleTappedEvent, _doubleTappedEventHandler, true);
@@ -1261,6 +1264,13 @@ namespace Microsoft.Maui.Controls.Platform
 
 		void HandleElementPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
 		{
+			if (e.PropertyName == Label.IsTextSelectableProperty.PropertyName && _control is TextBlock)
+			{
+				// Selectable text marks Tapped/DoubleTapped as handled, so the subscriptions have to be rebuilt.
+				UpdatingGestureRecognizers();
+				return;
+			}
+
 			if ((e.PropertyName == VisualElement.IsEnabledProperty.PropertyName ||
 				 e.PropertyName == VisualElement.InputTransparentProperty.PropertyName)
 				&& _control is ContentPanel { CrossPlatformLayout: IBorderView })

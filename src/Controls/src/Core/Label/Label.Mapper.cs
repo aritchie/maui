@@ -30,6 +30,11 @@ namespace Microsoft.Maui.Controls
 			LabelHandler.Mapper.ReplaceMapping<Label, ILabelHandler>(nameof(LineBreakMode), MapLineBreakMode);
 			LabelHandler.Mapper.ReplaceMapping<Label, ILabelHandler>(nameof(MaxLines), MapMaxLines);
 
+#if ANDROID
+			// Turning selection off resets focusability, which the gesture manager relies on for key activation.
+			LabelHandler.Mapper.AppendToMapping<Label, ILabelHandler>(nameof(IsTextSelectable), MapIsTextSelectableFocusable);
+#endif
+
 #if ANDROID || IOS
 			// these are for platforms that do no support view properties reaching spans
 			LabelHandler.Mapper.ModifyMapping<Label, ILabelHandler>(nameof(ILabel.Font), MapFont);
@@ -53,6 +58,9 @@ namespace Microsoft.Maui.Controls
 			// platform-specifics
 #if WINDOWS
 			LabelHandler.Mapper.ReplaceMapping<Label, ILabelHandler>(PlatformConfiguration.WindowsSpecific.InputView.DetectReadingOrderFromContentProperty.PropertyName, MapDetectReadingOrderFromContent);
+
+			// TextBlock is not a Control, so IsEnabled does not reach it and a disabled label would stay selectable.
+			LabelHandler.Mapper.AppendToMapping<Label, ILabelHandler>(nameof(IsEnabled), MapIsEnabledForSelection);
 #endif
 		}
 
